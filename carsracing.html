@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Simple Car Racer (4 Lanes)</title>
+    <style>
+        :root {
+            --road-width: 320px;
+            --game-bg: #626262;
+            --road-color: #2b2b2b;
+            --line-color: #ddd;
+            --car-width: 48px;
+            --car-height: 80px;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%;
+            width: 300px;
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+            color: #eee;
+            background: linear-gradient(#0b1220, #071021);
+        }
+
+        .wrap {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+        }
+
+        .game {
+            width: var(--road-width);
+            height: 700px;
+            background: radial-gradient(circle at 50% 0, rgba(255, 255, 255, 0.02), transparent 20%), var(--road-color);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+            border: 4px solid rgba(255, 255, 255, 0.03);
+        }
+
+        /* Score / HUD */
+        .hud {
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            z-index: 30;
+            background: rgba(255, 255, 255, 0.362);
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .hud .score {
+            font-weight: 700
+        }
+
+        .hud .high {
+            opacity: .85;
+            color: yellow
+        }
+
+        /* Player car */
+        .player {
+            position: absolute;
+            width: var(--car-width);
+            height: var(--car-height);
+            background: linear-gradient(green, green);
+            bottom: 28px;
+            left: 50%;
+
+            border-radius: 8px;
+            z-index: 20;
+            box-shadow: 0 8px 10px rgba(0, 0, 0, 0.6), inset 0 -10px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+
+            color: white;
+            font-weight: 900;
+            user-select: none;
+            transition: width 0.2s, height 0.1s;
+        }
+
+        /* Enemy car */
+        .enemy {
+            position: absolute;
+            width: var(--car-width);
+            height: var(--car-height);
+            background: linear-gradient(red, red);
+            border-radius: 8px;
+            z-index: 15;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Road dashed lines (dynamically generated for 4 lanes) */
+        .lane-line-dynamic {
+            position: absolute;
+            width: 5px;
+            top: -200%;
+            bottom: -200%;
+            background-image: linear-gradient(to bottom, transparent 0 25%, var(--line-color) 25% 75%, transparent 75% 100%);
+            background-size: 100% 60px;
+            z-index: 5;
+            opacity: 0.7;
+        }
+
+        /* Controls for mobile */
+        .controls {
+            display: flex;
+            gap: 8px;
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            z-index: 50;
+        }
+
+        .btn {
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            font-weight: 600;
+            color: #fff;
+            user-select: none;
+            transition: background 0.1s;
+        }
+
+        .btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .small {
+            font-size: 12px;
+            padding: 6px 8px
+        }
+
+        /* overlay when game over */
+        .overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 80;
+            color: white;
+            font-size: 18px;
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(2px);
+            border-radius: 10px;
+        }
+
+        /* helper styles */
+        .muted {
+            opacity: .8;
+            font-size: 13px
+        }
+
+        .instructions {
+            position: absolute;
+            left: 8px;
+            bottom: 8px;
+            font-size: 12px;
+            color: skyblue;
+            opacity: .9
+        }
+
+        @media (max-width:420px) {
+            .game {
+                transform: scale(.9)
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="game" id="game">
+            <div class="hud">
+                <div>Score: <span id="score">0</span></div>
+                <div class="high">Best: <span id="best">0</span></div>
+                <button class="btn small" id="startBtn">Start</button>
+                <button class="btn small" id="resetBtn">Reset Best</button>
+            </div>
+
+            <div class="controls" aria-hidden="true">
+                <button class="btn" id="leftBtn"> &larr; </button>
+                <button class="btn" id="rightBtn"> &rarr; </button>
+            </div>
+
+            <!-- Dynamic lane lines will be added here by JavaScript -->
+
+            <div class="player" id="player" align="center">YOU</div>
+
+            <div class="instructions muted">Use &larr; &rarr; or A / D to move. Touch buttons on mobile.</div>
+            <!-- overlay appears on game over -->
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const game = document.getElementById('game');
+            const player = document.getElementById('player');
+            const startBtn = document.getElementById('startBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const scoreEl = document.getElementById('score');
+            const bestEl = document.getElementById('best');
+            const leftBtn = document.getElementById('leftBtn');
+            const rightBtn = document.getElementById('rightBtn');
+
+            // Local storage key
+            const HS_KEY = 'carRacerHighScore_v1';
+
+            // Game settings (simple)
+            const ROAD_WIDTH = game.clientWidth;
+            const LANES = 4; // 4 LANES
+            const CAR_W = 48, CAR_H = 80;
+            const LANE_PADDING = 20;
+            const LANE_WIDTH = (ROAD_WIDTH - 2 * LANE_PADDING) / LANES;
+
+            // Player movement speed for smooth transition
+            const PLAYER_MOVE_SPEED = 20;
+
+            // State
+            let isRunning = false;
+            let score = 0;
+            let bestScore = parseInt(localStorage.getItem(HS_KEY)) || 0;
+            let speed = 1.5; // base speed (pixels per frame for enemies)
+            let spawnTimer = 0;
+            let enemies = [];
+            let playerLane = 1; // 0..LANES-1 ; starting in the second lane
+            let playerTargetX = 0; // The calculated X position (float) the car should be moving towards
+            let animId = null;
+            let lastTime = null;
+            let lineOffset = 0;
+            let laneLines = []; // Array to hold the dynamically created line elements
+
+            bestEl.textContent = bestScore;
+
+            // Helper to show custom message/modal instead of alert()
+            function showMessage(title, message) {
+                const existingModal = document.getElementById('custom-modal');
+                if (existingModal) existingModal.remove();
+
+                const modal = document.createElement('div');
+                modal.id = 'custom-modal';
+                modal.className = 'overlay';
+                modal.style.zIndex = 100;
+                modal.innerHTML = `
+                    <div style="font-size:22px;font-weight:800">${title}</div>
+                    <div class="muted">${message}</div>
+                    <button class="btn" id="closeModal">OK</button>
+                `;
+                game.appendChild(modal);
+                document.getElementById('closeModal').addEventListener('click', () => {
+                    modal.remove();
+                });
+            }
+
+            // Function to create the 3 lines needed for 4 lanes
+            function createLaneLines() {
+                // Remove old lines if they exist
+                laneLines.forEach(line => line.remove());
+                laneLines = [];
+
+                // We need LANES - 1 lines
+                for (let i = 1; i < LANES; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'lane-line-dynamic';
+
+                    // Calculate X position: start of padding + (lane index * lane width) - (half line width)
+                    const lineX = LANE_PADDING + i * LANE_WIDTH - 3;
+
+                    line.style.left = lineX + 'px';
+                    game.appendChild(line);
+                    laneLines.push(line);
+                }
+            }
+
+
+            // Calculate the target X position based on the current lane index
+            function updatePlayerPos() {
+                // Calculate the exact center x-position for the current playerLane using floating point precision.
+                playerTargetX = LANE_PADDING + playerLane * LANE_WIDTH + (LANE_WIDTH - CAR_W) / 2;
+            }
+
+            // Initial setup
+            createLaneLines();
+            updatePlayerPos();
+            player.style.left = playerTargetX + 'px';
+
+
+            // Start game
+            function startGame() {
+                if (isRunning) return;
+                isRunning = true;
+                score = 0;
+                speed = 2.5;
+                spawnTimer = 0;
+                enemies.forEach(e => e.el.remove());
+                enemies = [];
+                removeOverlay();
+                lastTime = performance.now();
+                animId = requestAnimationFrame(loop);
+            }
+
+            // End game
+            function endGame() {
+                isRunning = false;
+                cancelAnimationFrame(animId);
+
+                const finalScore = Math.floor(score);
+                let message = `Score: ${finalScore}`;
+
+                if (finalScore > bestScore) {
+                    bestScore = finalScore;
+                    localStorage.setItem(HS_KEY, bestScore);
+                    bestEl.textContent = bestScore;
+                    message += `<br><span style="color:#ffd54a; font-size:16px;">NEW BEST SCORE!</span>`;
+                }
+
+                showOverlay(`Game Over`, message);
+            }
+
+            // Reset best score
+            resetBtn.addEventListener('click', () => {
+                localStorage.removeItem(HS_KEY);
+                bestScore = 0;
+                bestEl.textContent = 0;
+                showMessage('High Score Reset', 'Best score has been wiped.');
+            });
+
+            // Spawn an enemy
+            function spawnEnemy() {
+                const lane = Math.floor(Math.random() * LANES);
+                // The enemy also uses the same centering logic to ensure it's perfectly aligned
+                const x = LANE_PADDING + lane * LANE_WIDTH + (LANE_WIDTH - CAR_W) / 2;
+                const el = document.createElement('div');
+                el.className = 'enemy';
+                // Set the style using the calculated float value
+                el.style.left = x + 'px';
+                el.style.top = -CAR_H - 10 + 'px';
+                el.style.width = CAR_W + 'px';
+                el.style.height = CAR_H + 'px';
+                // slight visual variety
+                el.style.background = Math.random() > 0.5 ? 'linear-gradient(#2b6eff,#184fd8)' : 'linear-gradient(#3ad1a5,#0ea06f)';
+                game.appendChild(el);
+                enemies.push({ el, lane, y: -CAR_H - 10 });
+            }
+
+            // Game loop
+            function loop(now) {
+                const dt = Math.min(40, now - lastTime); // cap dt for stability (ms)
+                lastTime = now;
+
+                // --- Smooth Player Movement ---
+                // We use parseFloat here to keep the current position as accurate as possible
+                const px = parseFloat(player.style.left);
+                const dx = playerTargetX - px;
+                const moveAmount = PLAYER_MOVE_SPEED * (dt / 16);
+
+                // Move the player car towards the target X
+                if (Math.abs(dx) > 0.01) { // lowered epsilon to 0.01 for more precision
+                    if (Math.abs(dx) < moveAmount) {
+                        // Close enough, snap to the exact float target.
+                        player.style.left = playerTargetX + 'px';
+                    } else {
+                        // Move in the calculated direction
+                        const direction = dx > 0 ? 1 : -1;
+                        player.style.left = px + (direction * moveAmount) + 'px';
+                    }
+                }
+                // --- End Player Movement ---
+
+
+                // update line offset (visual)
+                lineOffset += speed * (dt / 16);
+                laneLines.forEach(line => {
+                    line.style.backgroundPositionY = lineOffset + 'px';
+                });
+
+                // spawn logic
+                spawnTimer += dt;
+                if (spawnTimer > 650) { // spawn roughly every 0.65s (can vary with score)
+                    spawnTimer = 0;
+                    spawnEnemy();
+                }
+
+                // move enemies
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i];
+                    e.y += speed * (dt / 16) * 3; // enemy falls faster relative to 'speed'
+                    e.el.style.top = e.y.toFixed(2) + 'px'; // use toFixed for rendering enemies smoothly
+                    // remove off-screen
+                    if (e.y > game.clientHeight + 50) {
+                        e.el.remove();
+                        enemies.splice(i, 1);
+                        continue;
+                    }
+
+                    // collision detection (AABB)
+                    // Get enemy X position using parseFloat for accuracy
+                    const ex = parseFloat(e.el.style.left);
+                    const ey = e.y;
+                    const py = parseInt(player.style.bottom, 10) || 28;
+
+                    // compute real y of player
+                    const playerTop = game.clientHeight - py - CAR_H;
+
+                    // Check collision
+                    // px is the accurate float position of the player's left edge
+                    if (px < ex + CAR_W &&
+                        px + CAR_W > ex &&
+                        playerTop < ey + CAR_H &&
+                        playerTop + CAR_H > ey) {
+                        // collision!
+                        endGame();
+                        return;
+                    }
+                }
+
+                // Score and speed update
+                score += 0.02 * (dt / 16) * (1 + speed / 6);
+                scoreEl.textContent = Math.floor(score);
+
+                speed += 0.0006 * (dt / 16); // tiny increase
+                // cap speed
+                if (speed > 9) speed = 9;
+
+                animId = requestAnimationFrame(loop);
+            }
+
+            // Overlay to show game over / start instructions
+            function showOverlay(title, text) {
+                const ov = document.createElement('div');
+                ov.className = 'overlay';
+                ov.id = 'overlay';
+                ov.innerHTML = `<div style="font-size:22px;font-weight:800">${title.replace('\n', '<br>')}</div>
+                        <div class="muted">${text.replace('\n', '<br>')}</div>
+                        <button class="btn" id="overlayStart" style="padding:10px 20px; font-size:16px; background:#4f46e5; border:none;">Restart</button>`;
+                game.appendChild(ov);
+                document.getElementById('overlayStart').addEventListener('click', () => {
+                    ov.remove();
+                    startGame();
+                });
+            }
+            function removeOverlay() {
+                const ov = document.getElementById('overlay');
+                if (ov) ov.remove();
+                const modal = document.getElementById('custom-modal');
+                if (modal) modal.remove();
+            }
+
+            // Key handling: Now only updates the target lane
+            window.addEventListener('keydown', (e) => {
+                if (isRunning) {
+                    if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
+                        e.preventDefault();
+                        if (playerLane > 0) {
+                            playerLane--;
+                            updatePlayerPos(); // Set new target X
+                        }
+                    } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
+                        e.preventDefault();
+                        if (playerLane < LANES - 1) {
+                            playerLane++;
+                            updatePlayerPos(); // Set new target X
+                        }
+                    }
+                }
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    if (!isRunning) startGame();
+                }
+            });
+
+            // Touch / button controls: Now only updates the target lane
+            leftBtn.addEventListener('click', () => {
+                if (isRunning && playerLane > 0) {
+                    playerLane--;
+                    updatePlayerPos();
+                }
+            });
+            rightBtn.addEventListener('click', () => {
+                if (isRunning && playerLane < LANES - 1) {
+                    playerLane++;
+                    updatePlayerPos();
+                }
+            });
+
+            // Start button
+            startBtn.addEventListener('click', () => {
+                if (!isRunning) startGame();
+            });
+
+            // initialize and show initial overlay
+            showOverlay('Simple Car Racer (4 Lanes)', 'The car is now calculated with sub-pixel precision to ensure it is perfectly centered in the lane.');
+
+        })();
+    </script>
+</body>
+
+</html>

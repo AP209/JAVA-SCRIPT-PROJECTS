@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspirational Quote Generator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for custom theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-blue': '#4F46E5', // Indigo 600
+                        'secondary-gray': '#F3F4F6', // Gray 100
+                        'dark-text': '#1F2937', // Gray 900
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for the app container */
+        body {
+            background-color: silver;
+            /* Light teal background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Styling for the main card */
+        #quote-card {
+            box-shadow: 0 10px 25px -5px black, 0 8px 6px -6px black;
+        }
+
+        /* Spinner style */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="quote-card" class="bg-white max-w-lg w-11/12 p-8 sm:p-10 rounded-xl transition-all duration-300">
+        <!-- Title & Icon -->
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-3xl font-extrabold text-primary-blue">
+                Quote Generator
+            </h1>
+            <!-- Quote Icon using SVG -->
+            <!-- <svg class="w-8 h-8 text-primary-blue opacity-80" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M11.755 10.978c0 .245-.2.44-.448.44l-.004.004H8.448a.448.448 0 01-.448-.448V8.95c0-.245.2-.44.448-.44h.448v1.344c0 .35.286.634.637.634h1.344a.448.448 0 00.448-.448V8.95c0-.245.2-.44.448-.44h.448a.448.448 0 01.448.448v1.344c0 .245-.2.44-.448.44l-.004.004zM13.755 10.978c0 .245-.2.44-.448.44l-.004.004H10.448a.448.448 0 01-.448-.448V8.95c0-.245.2-.44.448-.44h.448v1.344c0 .35.286.634.637.634h1.344a.448.448 0 00.448-.448V8.95c0-.245.2-.44.448-.44h.448a.448.448 0 01.448.448v1.344c0 .245-.2.44-.448.44l-.004.004z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M8.25 5.5A2.75 2.75 0 005.5 8.25V14.5a.5.5 0 00.5.5h1.75a.75.75 0 01.75.75v1.25a.75.75 0 01-1.28.53l-1.5-1.5A.75.75 0 006 17a.75.75 0 01-.75-.75V8.25a.75.75 0 01.75-.75h7.5a.75.75 0 01.75.75v5.5a.75.75 0 01-.75.75H12.5a.75.75 0 00-.75.75v1.25a.75.75 0 001.28.53l1.5-1.5A.75.75 0 0016 17a.75.75 0 00.75-.75V8.25A2.75 2.75 0 0013.75 5.5h-5.5z" clip-rule="evenodd" /></svg> -->
+        </div>
+
+        <!-- Quote Display Area -->
+        <div class="min-h-[120px] mb-6 flex flex-col justify-center">
+            <p id="quote-text"
+                class="text-dark-text text-xl sm:text-2xl font-medium leading-relaxed italic text-center transition-opacity duration-500">
+                Click "New Quote" to find some inspiration!
+            </p>
+            <p id="quote-author" class="text-gray-500 text-base font-semibold mt-4 text-right pr-4">
+                - The Generator
+            </p>
+            <div id="status-message" class="text-center text-sm mt-4 text-red-500 hidden"></div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row justify-between gap-3 mt-6">
+
+            <button id="new-quote-btn"
+                class="flex-1 px-6 py-3 bg-primary-blue text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-300 active:scale-[.98] flex items-center justify-center disabled:opacity-50"
+                aria-label="Generate new quote">
+                <span id="btn-text">New Quote</span>
+                <span id="btn-spinner" class="spinner ml-2 hidden"></span>
+            </button>
+
+            <button id="copy-btn"
+                class="px-6 py-3 bg-secondary-gray text-dark-text font-semibold rounded-lg shadow-md hover:bg-gray-200 transition duration-300 active:scale-[.98] sm:w-1/3 disabled:opacity-50"
+                aria-label="Copy quote to clipboard">
+                Copy
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Modal/Toast for copy success -->
+    <div id="copy-toast"
+        class="fixed top-5 right-5 bg-green-500 text-white px-4 py-2 rounded-lg shadow-xl transition-transform transform translate-x-full opacity-0 duration-500 ease-out z-50">
+        Copied to clipboard!
+    </div>
+
+
+    <script>
+        // Global variables for DOM elements
+        const quoteTextElement = document.getElementById('quote-text');
+        const quoteAuthorElement = document.getElementById('quote-author');
+        const newQuoteBtn = document.getElementById('new-quote-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const statusMessage = document.getElementById('status-message');
+        const copyToast = document.getElementById('copy-toast');
+
+        let currentQuote = "";
+
+        // Local quotes used since the external API call often fails in sandboxed environments.
+        const FALLBACK_QUOTES = [
+            { content: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+            { content: "Strive not to be a success, but rather to be of value.", author: "Albert Einstein" },
+            { content: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+            { content: "It is never too late to be what you might have been.", author: "George Eliot" },
+            { content: "What you do makes a difference, and you have to decide what kind of difference you want to make.", author: "Jane Goodall" },
+            { content: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+            { content: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+            { content: "The mind is everything. What you think you become.", author: "Buddha" },
+            { content: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" }
+        ];
+
+        /*
+         * Converts plain text to a displayable quote string.
+         * @param {string} content - The quote text.
+         * @param {string} author - The author's name.
+         * @returns {string} The formatted quote string.
+         */
+        const formatQuote = (content, author) => {
+            return `${content} \n\n— ${author}`;
+        };
+
+        /*
+         * Shows a temporary toast message for user feedback.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success' or 'error' for styling.
+         */
+        const showToast = (message, type = 'success') => {
+            copyToast.textContent = message;
+            copyToast.className = 'fixed top-5 right-5 px-4 py-2 rounded-lg shadow-xl transition-transform transform duration-500 ease-out z-50';
+
+            if (type === 'success') {
+                copyToast.classList.add('bg-green-500', 'text-white');
+            } else {
+                copyToast.classList.add('bg-red-500', 'text-white');
+            }
+
+            // Show the toast (slide in)
+            copyToast.classList.remove('translate-x-full', 'opacity-0');
+            copyToast.classList.add('translate-x-0', 'opacity-100');
+
+            // Hide the toast after 3 seconds (slide out)
+            setTimeout(() => {
+                copyToast.classList.remove('translate-x-0', 'opacity-100');
+                copyToast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        };
+
+
+        /*
+         * Selects and displays a random quote from the local fallback list.
+         */
+        const fetchQuote = async () => {
+            // Set a very brief "loading" state for visual feedback
+            newQuoteBtn.disabled = true;
+            copyBtn.disabled = true;
+            btnText.textContent = 'Loading...';
+            btnSpinner.classList.remove('hidden');
+            quoteTextElement.style.opacity = '0.5';
+
+            // Simulate a brief delay to make the "loading" state noticeable (good UX)
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Reset status message             
+            statusMessage.classList.add('hidden');
+
+            // Logic to select a random quote
+            if (FALLBACK_QUOTES.length > 0) {
+                const randomIndex = Math.floor(Math.random() * FALLBACK_QUOTES.length);
+                const data = FALLBACK_QUOTES[randomIndex];
+
+                // Update the DOM with the new quote
+                quoteTextElement.textContent = data.content;
+                quoteAuthorElement.textContent = `- ${data.author}`;
+                currentQuote = formatQuote(data.content, data.author);
+            } else {
+                quoteTextElement.textContent = "Error: No quotes available in the local list.";
+                quoteAuthorElement.textContent = "- System Error";
+                statusMessage.textContent = "The quote list is empty.";
+                statusMessage.classList.remove('hidden');
+            }
+
+            // Reset loading state 
+            newQuoteBtn.disabled = false;
+            copyBtn.disabled = false;
+            btnText.textContent = 'New Quote';
+            btnSpinner.classList.add('hidden');
+            quoteTextElement.style.opacity = '1';
+        };
+
+        /*
+         * Copies the current quote and author to the clipboard.
+         */
+        const copyQuote = () => {
+            if (!currentQuote) {
+                showToast("No quote to copy yet!", 'error');
+                return;
+            }
+
+            // Create a temporary textarea element to hold the text
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = currentQuote;
+            document.body.appendChild(tempTextArea);
+
+            // Select the text and copy it
+            tempTextArea.select();
+
+            try {
+                // document.execCommand('copy') is used for compatibility in sandboxed environments
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast("Quote copied successfully!");
+                } else {
+                    throw new Error("Copy command failed.");
+                }
+            } catch (err) {
+                console.error('Copy failed:', err);
+                showToast("Copy failed. Please copy manually.", 'error');
+            }
+
+            // Clean up the temporary element
+            document.body.removeChild(tempTextArea);
+        };
+
+        window.onload = () => {
+            fetchQuote();
+        };
+
+        newQuoteBtn.addEventListener('click', () => {
+            fetchQuote();
+        });
+
+        copyBtn.addEventListener('click', () => {
+            copyQuote();
+        });
+
+    </script>
+</body>
+
+</html>

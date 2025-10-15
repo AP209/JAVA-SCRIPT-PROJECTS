@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Color Flipper</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for custom theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'accent': '#6366F1', // Indigo 500
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Base styles */
+        body {
+            transition: background-color 0.5s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #F3F4F6;
+            /* Default light background */
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- <div id="main-content" -->
+    <!-- class="p-8 sm:p-12 rounded-xl shadow-2xl transition-all duration-300 transform scale-100 hover:scale-[1.01] max-w-xl w-11/12"> -->
+
+    <!-- <h1 id="header" class="text-3xl sm:text-4xl font-extrabold text-center mb-6">
+            Color Flipper
+        </h1> -->
+
+    <div class="bg-white p-6 sm:p-8 rounded-lg shadow-inner flex flex-col items-center">
+
+        <!-- Color Display Box -->
+        <p id="color-display" class="text-xl sm:text-2xl font-semibold mb-4 text-center">
+            Color Flipper
+            <!-- <span id="hex-code"
+                        class="text-accent font-mono text-3xl sm:text-5xl mt-2 block p-2 rounded-lg bg-gray-100 shadow-md transition-colors duration-500">
+                        #F3F4F6
+                    </span> -->
+        </p>
+
+        <!-- Generate Button -->
+        <button id="generate-btn"
+            class="mt-6 px-8 py-4 bg-accent text-white font-bold rounded-xl text-lg shadow-lg hover:bg-indigo-700 transition duration-300 transform active:scale-[0.98] flex items-center justify-center space-x-2">
+            <!-- <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 19.5h3.998M4 12a8 8 0 1016 0A8 8 0 004 12z"></path></svg> -->
+            <span>Generate New Color</span>
+        </button>
+    </div>
+    <!-- </div> -->
+
+
+    <script>
+        // Global DOM elements
+        const body = document.body;
+        const mainContent = document.getElementById('main-content');
+        const hexCodeSpan = document.getElementById('hex-code');
+        const header = document.getElementById('header');
+        const colorDisplay = document.getElementById('color-display');
+        const generateBtn = document.getElementById('generate-btn');
+
+        /**
+         * Generates a random hexadecimal color code string.
+         * @returns {string} The hex color code (e.g., "#A3B1C5").
+         */
+        const generateHexColor = () => {
+            const hex = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                // Pick a random character from the hex string
+                color += hex[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        };
+
+        /**
+         * Determines if a hex color is dark enough to require light text (white) for contrast.
+         * @param {string} hex - The hex color code (e.g., #FFFFFF).
+         * @returns {boolean} True if the color is considered dark, false otherwise.
+         */
+        const isColorDark = (hex) => {
+            // Remove the #
+            hex = hex.substring(1);
+
+            // Convert hex to RGB components
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+
+            // Calculate perceived luminance (W3C standard formula approximation)
+            // L = 0.2126*R + 0.7152*G + 0.0722*B
+            const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
+            // Use a threshold (e.g., 0.5) to decide light vs. dark
+            return luminance < 0.5;
+        };
+
+        /**
+         * Updates the background color and the displayed hex code.
+         */
+        const updateColor = () => {
+            const newColor = generateHexColor();
+
+            // Apply new background color to the body
+            body.style.backgroundColor = newColor;
+
+            // Update the displayed hex code
+            hexCodeSpan.textContent = newColor;
+
+            // Determine contrast color for the foreground elements
+            const isDark = isColorDark(newColor);
+            const textColor = isDark ? 'white' : 'black';
+
+            // Update text colors for visibility
+            header.style.color = textColor;
+            colorDisplay.style.color = textColor;
+            // The hex code span itself is inside a white box, so we only need to change the surrounding text
+            mainContent.style.color = textColor;
+
+            // Optionally, change the button's accent color slightly if the background is too similar
+            if (isDark) {
+                generateBtn.classList.remove('bg-accent', 'hover:bg-indigo-700');
+                generateBtn.classList.add('bg-white', 'text-black', 'hover:bg-gray-200');
+            } else {
+                generateBtn.classList.add('bg-accent', 'hover:bg-indigo-700');
+                generateBtn.classList.remove('bg-white', 'text-black', 'hover:bg-gray-200');
+            }
+        };
+
+        // --- Event Listeners ---
+        window.onload = () => {
+            // Set an initial random color on load
+            updateColor();
+        };
+
+        generateBtn.addEventListener('click', updateColor);
+
+    </script>
+</body>
+
+</html>
